@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0f0a">
+<title>IX Receipt Forge</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Hind+Siliguri:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+
+  /* =========================================================
+     EDITOR STYLES — Dark black + green theme
+     ========================================================= */
+  html,body{height:100%;background:#080c08;}
+  body{
+    font-family:'Inter','Hind Siliguri','Noto Sans Bengali',sans-serif;
+    color:#e0e8e0;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  #editor-view{
+    min-height:100vh;
+    background:#080c08;
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* Ambient glow blobs */
+  .blob{position:fixed;border-radius:50%;pointer-events:none;z-index:0;filter:blur(80px);}
+  .blob-1{top:-100px;left:-80px;width:320px;height:320px;background:rgba(34,197,94,0.07);}
+  .blob-2{bottom:-80px;right:-60px;width:280px;height:280px;background:rgba(16,185,129,0.05);}
+
+  .editor-inner{
+    position:relative;z-index:1;
+    max-width:440px;margin:0 auto;
+    padding:20px 16px 160px 16px;
+  }
+
+  /* Glass card */
+  .glass{
+    background:rgba(16,24,16,0.7);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(34,197,94,0.1);
+    border-radius:18px;
+    padding:24px 20px;
+    margin-bottom:18px;
+  }
+
+  .glass-header{
+    display:flex;align-items:center;gap:10px;
+    margin-bottom:20px;
+  }
+  .glass-header svg{width:20px;height:20px;color:#4ade80;flex:0 0 auto;}
+  .glass-header h2{font-size:15px;font-weight:700;color:#c8e6c8;letter-spacing:0.3px;}
+
+  /* Form inputs */
+  .field{margin-bottom:16px;}
+  .field:last-child{margin-bottom:0;}
+  .field-label{
+    display:flex;align-items:center;gap:7px;
+    font-size:11.5px;font-weight:700;
+    color:rgba(200,230,200,0.7);
+    text-transform:uppercase;letter-spacing:0.8px;
+    margin-bottom:7px;
+  }
+  .field-label svg{width:13px;height:13px;color:#4ade80;flex:0 0 auto;}
+  .field-input{
+    width:100%;
+    background:rgba(8,12,8,0.8);
+    border:1px solid rgba(34,197,94,0.12);
+    border-radius:11px;
+    padding:11px 14px;
+    color:#dceadc;
+    font-size:14.5px;
+    font-family:inherit;
+    outline:none;
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .field-input::placeholder{color:rgba(160,200,160,0.35);}
+  .field-input:focus{
+    border-color:rgba(34,197,94,0.45);
+    box-shadow:0 0 0 3px rgba(34,197,94,0.1);
+  }
+
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  /* Language toggle */
+  .lang-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;
+  }
+  .lang-left{display:flex;align-items:center;gap:9px;}
+  .lang-left svg{width:17px;height:17px;color:#4ade80;}
+  .lang-left span{font-size:13.5px;font-weight:600;color:#c8e6c8;}
+  .lang-right{display:flex;align-items:center;gap:9px;}
+  .lang-right span{font-size:12.5px;color:rgba(200,230,200,0.5);}
+
+  .toggle{
+    width:48px;height:26px;
+    background:#1a2e1a;
+    border-radius:13px;
+    position:relative;cursor:pointer;
+    transition:background .3s;
+    border:1px solid rgba(34,197,94,0.15);
+  }
+  .toggle.on{background:#166534;}
+  .toggle-dot{
+    width:20px;height:20px;
+    background:#fff;border-radius:50%;
+    position:absolute;top:2px;left:3px;
+    transition:transform .3s;
+    box-shadow:0 1px 4px rgba(0,0,0,0.3);
+  }
+  .toggle.on .toggle-dot{transform:translateX(22px);}
+
+  /* Generate button */
+  .gen-wrap{
+    position:fixed;bottom:0;left:0;right:0;z-index:50;
+    padding:14px 16px 26px;
+    background:linear-gradient(to top,#080c08 60%,transparent);
+  }
+  .gen-inner{max-width:440px;margin:0 auto;position:relative;}
+  .gen-inner::before{
+    content:'';position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:75%;height:100%;
+    background:radial-gradient(ellipse,rgba(34,197,94,0.3),transparent 70%);
+    border-radius:50%;filter:blur(18px);
+    animation:gPulse 2.5s ease-in-out infinite;z-index:-1;
+  }
+  @keyframes gPulse{
+    0%,100%{opacity:.45;transform:translate(-50%,-50%) scale(1);}
+    50%{opacity:1;transform:translate(-50%,-50%) scale(1.08);}
+  }
+  .gen-btn{
+    width:100%;
+    background:linear-gradient(135deg,#22c55e,#16a34a);
+    color:#fff;font-family:inherit;
+    font-size:16.5px;font-weight:700;
+    padding:15px 24px;border:none;
+    border-radius:15px;cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:transform .15s, box-shadow .15s;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  .gen-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(34,197,94,0.35);}
+  .gen-btn:active{transform:translateY(0);}
+  .gen-btn svg{width:19px;height:19px;}
+  .gen-btn::after{
+    content:'';position:absolute;top:0;left:-100%;
+    width:50%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent);
+    animation:shine 3.5s infinite;
+  }
+  @keyframes shine{0%{left:-100%;}50%{left:150%;}100%{left:150%;}}
+
+  /* Editor header */
+  .editor-logo{
+    text-align:center;padding:28px 0 22px;
+  }
+  .editor-logo-icon{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:52px;height:52px;
+    background:linear-gradient(135deg,#22c55e,#15803d);
+    border-radius:15px;margin-bottom:14px;
+    box-shadow:0 6px 20px rgba(34,197,94,0.3);
+  }
+  .editor-logo-icon svg{width:26px;height:26px;color:#fff;}
+  .editor-logo h1{
+    font-size:26px;font-weight:800;
+    background:linear-gradient(135deg,#4ade80,#22c55e);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;letter-spacing:-0.3px;
+  }
+  .editor-logo p{font-size:13px;color:rgba(200,230,200,0.5);margin-top:4px;}
+
+  /* Preview toolbar */
+  .preview-bar{
+    position:sticky;top:0;z-index:60;
+    background:rgba(8,12,8,0.95);
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid rgba(34,197,94,0.1);
+    padding:10px 14px;
+  }
+  .preview-bar-inner{
+    max-width:440px;margin:0 auto;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .tb-btn{
+    display:flex;align-items:center;gap:7px;
+    padding:10px 20px;border-radius:11px;
+    font-family:inherit;font-size:14px;font-weight:600;
+    cursor:pointer;border:none;transition:all .15s;
+  }
+  .tb-btn svg{width:17px;height:17px;}
+  .tb-back{background:#1a2e1a;color:#a3e0a3;}
+  .tb-back:hover{background:#1f3a1f;}
+  .tb-dl{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;}
+  .tb-dl:hover{box-shadow:0 4px 16px rgba(34,197,94,0.3);}
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:rgba(34,197,94,0.15);border-radius:3px;}
+
+
+  /* =========================================================
+     RECEIPT STYLES — EXACT pixel-perfect copy (untouched)
+     ========================================================= */
+  :root{
+    --pink:#E2136E;
+    --green:#008A45;
+    --line:#EDEDED;
+    --label:#6E6E6E;
+    --ink:#1C1C1C;
+    --avatar:#EDA8CC;
+  }
+
+  .receipt-body{
+    font-family:'Hind Siliguri','Noto Sans Bengali',sans-serif;
+    background:#ffffff;
+    color:var(--ink);
+  }
+
+  .page{
+    width:100%;
+    max-width:400px;
+    min-height:100vh;
+    min-height:100dvh;
+    background:#fff;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+
+  .hdr{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    padding:44px 16px 0 16px;
+  }
+  .hdr-title{
+    font-size:18px;
+    line-height:26px;
+    font-weight:700;
+    letter-spacing:0.1px;
+    white-space:nowrap;
+    color:var(--pink);
+  }
+  .hdr-title .ok{color:var(--green);}
+  .hdr .check{
+    width:26px;
+    height:26px;
+    flex:0 0 auto;
+    margin-top:0;
+  }
+
+  .recipient{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:48px 16px 29px 16px;
+  }
+  .who{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width:0;
+  }
+  .avatar-wrap{
+    position:relative;
+    width:42px;
+    height:42px;
+    flex:0 0 auto;
+  }
+  .avatar{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    background:var(--avatar);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    font-weight:500;
+    line-height:1;
+  }
+  .avatar-badge{
+    position:absolute;
+    top:-2px;
+    right:-3px;
+    width:17px;
+    height:17px;
+    border-radius:50%;
+    background:var(--pink);
+    border:1.6px solid #fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .avatar-badge svg{width:8px;height:8px;display:block;}
+
+  .who-txt{min-width:0;}
+  .who-name{
+    font-size:16px;
+    line-height:22px;
+    font-weight:400;
+    color:var(--ink);
+    white-space:nowrap;
+  }
+  .who-phone{
+    font-size:14.5px;
+    line-height:21px;
+    font-weight:400;
+    color:#5E5E5E;
+    white-space:nowrap;
+  }
+
+  .call-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    flex:0 0 auto;
+    border:1.4px solid var(--pink);
+    background:#fff;
+    border-radius:8px;
+    padding:7px 18px;
+    color:var(--pink);
+    font-family:'Hind Siliguri','Noto Sans Bengali',sans-serif;
+    font-size:15px;
+    font-weight:500;
+    line-height:21px;
+    cursor:pointer;
+    text-decoration:none;
+  }
+  .call-btn svg{width:16px;height:16px;}
+
+  .details{
+    display:table;
+    width:100%;
+    table-layout:fixed;
+    border-collapse:collapse;
+    border-top:1px solid var(--line);
+  }
+  .drow{display:table-row;}
+  .dcell{
+    display:table-cell;
+    width:50%;
+    vertical-align:top;
+    padding:12px 20px 15px 20px;
+    border-bottom:1px solid var(--line);
+    border-right:1px solid var(--line);
+  }
+  .dcell:last-child{border-right:none;}
+
+  .dcell .label{
+    font-size:12.5px;
+    line-height:19px;
+    font-weight:400;
+    color:var(--label);
+    margin-bottom:2px;
+  }
+  .dcell .value{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:16px;
+    line-height:24px;
+    font-weight:500;
+    color:var(--ink);
+    white-space:nowrap;
+  }
+  .dcell .value .taka{
+    font-size:16px;
+    font-weight:500;
+    line-height:24px;
+  }
+  .dcell .charge{
+    font-size:12.5px;
+    line-height:19px;
+    font-weight:400;
+    color:var(--label);
+    margin-top:1px;
+  }
+
+  .drow.amount .dcell{padding-bottom:8px;}
+
+  .inline-ico{
+    width:16px;
+    height:16px;
+    flex:0 0 auto;
+    background:none;
+    border:none;
+    padding:0;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    color:var(--pink);
+  }
+  .inline-ico svg{width:16px;height:16px;}
+  .inline-ico.copy svg{width:15.5px;height:15.5px;}
+  .inline-ico.eye  svg{width:17px;height:17px;}
+
+  .ref-row .dcell{
+    padding:22px 20px 27px 20px;
+    border-bottom:1px solid var(--line);
+  }
+
+  .actions{
+    display:flex;
+    gap:12px;
+    padding:12px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .action-btn{
+    flex:1 1 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    min-width:0;
+    background:#fff;
+    border:1.4px solid var(--pink);
+    border-radius:9px;
+    padding:11px 6px;
+    color:var(--pink);
+    font-family:'Hind Siliguri','Noto Sans Bengali',sans-serif;
+    font-size:15px;
+    line-height:22px;
+    font-weight:500;
+    white-space:nowrap;
+    cursor:pointer;
+  }
+  .action-btn svg{width:18px;height:18px;flex:0 0 auto;}
+
+  .rewards{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    padding:22px 20px 0 20px;
+  }
+  .reward-star{
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:var(--pink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .reward-star svg{width:18px;height:18px;}
+
+  .reward-rule{
+    width:82px;
+    height:1px;
+    background:#E9E9E9;
+    margin:13px 0 10px;
+  }
+  .reward-eyebrow{
+    font-size:14.5px;
+    line-height:21px;
+    font-weight:400;
+    color:#3B3B3B;
+  }
+  .reward-title{
+    font-size:19px;
+    line-height:27px;
+    font-weight:700;
+    color:#17171B;
+    letter-spacing:-0.1px;
+    margin-top:1px;
+  }
+  .reward-sub{
+    font-size:14px;
+    line-height:21px;
+    font-weight:400;
+    color:#3B3B3B;
+    margin-top:1px;
+  }
+  .reward-sub a{
+    color:var(--pink);
+    font-weight:500;
+    text-decoration:underline;
+    text-underline-offset:2.5px;
+  }
+
+  .spacer{flex:1 1 auto;min-height:40px;}
+
+  /* Force capture-area page to NOT use viewport units */
+  #capture-area .page{
+    min-height:auto!important;
+    width:400px!important;
+    max-width:400px!important;
+  }
+  #capture-area .details{
+    width:100%!important;
+    max-width:400px!important;
+  }
+
+  /* Allow text selection & long-press everywhere */
+  *{-webkit-user-select:auto!important;user-select:auto!important;}
+
+  .r-footer{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    background:var(--pink);
+    color:#fff;
+    border:none;
+    font-family:'Hind Siliguri','Noto Sans Bengali',sans-serif;
+    font-size:18px;
+    font-weight:600;
+    line-height:26px;
+    padding:14px 22px 14px 20px;
+    min-height:54px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .r-footer span{display:block;}
+  .r-footer svg{
+    width:27px;
+    height:27px;
+    flex:0 0 auto;
+  }
+
+  /* toast */
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:70px;
+    transform:translate(-50%,14px);
+    background:#1C1C1C;
+    color:#fff;
+    font-size:13px;
+    line-height:18px;
+    padding:9px 16px;
+    border-radius:8px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+    z-index:99;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:.94;transform:translate(-50%,0);}
+
+  @media (max-width:359px){
+    .hdr{padding-top:30px;}
+    .recipient{padding-top:34px;}
+    .hdr-title{font-size:16px;}
+    .actions{gap:8px;padding:10px 12px;}
+    .action-btn{font-size:13.5px;gap:6px;padding:7px 4px;}
+    .action-btn svg{width:16px;height:16px;}
+    .dcell{padding-left:16px;padding-right:14px;}
+    .ref-row .dcell{padding-left:16px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     EDITOR VIEW — Dark + Green
+     ============================================================ -->
+<div id="editor-view">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <div class="editor-inner">
+
+    <!-- Logo -->
+    <div class="editor-logo">
+      <div class="editor-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <h1>IX Receipt Forge</h1>
+      <p id="editor-sub">পিক্সেল-পারফেক্ট বিকাশ রিসিট তৈরি করুন</p>
+    </div>
+
+    <!-- Language Toggle -->
+    <div class="glass" style="padding:0;">
+      <div class="lang-bar">
+        <div class="lang-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          <span id="lbl-lang">ভাষা</span>
+        </div>
+        <div class="lang-right">
+          <span>EN</span>
+          <div class="toggle on" id="langToggle" onclick="toggleLang()">
+            <div class="toggle-dot"></div>
+          </div>
+          <span>বাংলা</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recipient Card -->
+    <div class="glass">
+      <div class="glass-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <h2 id="sec-recip">প্রাপকের তথ্য</h2>
+      </div>
+      <div class="field">
+        <label class="field-label" id="lbl-name">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          নাম
+        </label>
+        <input class="field-input" type="text" id="in-name" placeholder="e.g. infinity cdx" value="R7AD Bhai FF">
+      </div>
+      <div class="field">
+        <label class="field-label" id="lbl-phone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          ফোন নম্বর
+        </label>
+        <input class="field-input" type="text" id="in-phone" placeholder="e.g. 01965064865" value="01965064865">
+      </div>
+    </div>
+
+    <!-- Transaction Card -->
+    <div class="glass">
+      <div class="glass-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>
+        <h2 id="sec-txn">লেনদেনের তথ্য</h2>
+      </div>
+
+      <div class="field-row" style="margin-bottom:16px;">
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label" id="lbl-amount">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+            পরিমাণ
+          </label>
+          <input class="field-input" type="text" id="in-amount" placeholder="10.00" value="10.00">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label" id="lbl-balance">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2.5"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+            নতুন ব্যালেন্স
+          </label>
+          <input class="field-input" type="text" id="in-balance" placeholder="5.01" value="5.01">
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" id="lbl-charge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          চার্জ টেক্সট
+        </label>
+        <input class="field-input" type="text" id="in-charge" placeholder="+ চার্জ প্রযোজ্য নয়" value="+ চার্জ প্রযোজ্য নয়">
+      </div>
+
+      <div class="field-row" style="margin-bottom:16px;">
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label" id="lbl-trxid">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg>
+            ট্রানজেকশন আইডি
+          </label>
+          <input class="field-input" type="text" id="in-trxid" placeholder="অটো-জেনারেটেড" value="">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label" id="lbl-ref">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+            রেফারেন্স
+          </label>
+          <input class="field-input" type="text" id="in-ref" placeholder="ঐচ্ছিক" value="">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label" id="lbl-date">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+            তারিখ
+          </label>
+          <input class="field-input" type="text" id="in-date" placeholder="অটো (DD/MM/YY)">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label class="field-label" id="lbl-time">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            সময়
+          </label>
+          <input class="field-input" type="text" id="in-time" placeholder="অটো (HH:MMam)">
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /editor-inner -->
+
+  <!-- Sticky Generate Button -->
+  <div class="gen-wrap">
+    <div class="gen-inner">
+      <button class="gen-btn" type="button" onclick="processReceipt()" id="btn-gen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+        <span id="btn-gen-text">রিসিট তৈরি করুন</span>
+      </button>
+    </div>
+  </div>
+
+</div><!-- /editor-view -->
+
+
+<!-- ============================================================
+     PREVIEW VIEW — Exact receipt + toolbar
+     ============================================================ -->
+<div id="preview-view" style="display:none;background:#080c08;min-height:100vh;">
+
+  <!-- Toolbar -->
+  <div class="preview-bar">
+    <div class="preview-bar-inner">
+      <button class="tb-btn tb-back" type="button" onclick="goBack()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        <span id="btn-back-txt">ফিরে যান</span>
+      </button>
+      <button class="tb-btn tb-dl" type="button" onclick="downloadReceipt()" id="btn-dl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+        <span id="btn-dl-txt">ডাউনলোড</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Capture wrapper (centered, locked 400px) -->
+  <div style="display:flex;justify-content:center;padding:20px 0 60px;">
+    <div id="capture-area" class="receipt-body" style="width:400px!important;min-width:400px!important;max-width:400px!important;overflow:hidden;">
+
+      <!-- ====== RECEIPT (EXACT COPY — NOTHING CHANGED) ====== -->
+      <main class="page" id="receipt-page" style="min-height:auto!important;width:400px!important;max-width:400px!important;">
+
+        <header class="hdr">
+          <h1 class="hdr-title">আপনার সেন্ড&nbsp;মানি&nbsp;<span class="ok">সফল&nbsp;হয়েছে</span></h1>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="#008A45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </header>
+
+        <section class="recipient">
+          <div class="who">
+            <div class="avatar-wrap">
+              <div class="avatar" id="r-avatar">K</div>
+              <div class="avatar-badge" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="#ffffff" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </div>
+            </div>
+            <div class="who-txt">
+              <div class="who-name" id="r-name">R7AD Bhai FF</div>
+              <div class="who-phone" id="r-phone">01965064865</div>
+            </div>
+          </div>
+
+          <a class="call-btn" href="tel:01965064865">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            <span id="r-call">কল</span>
+          </a>
+        </section>
+
+        <section class="details">
+          <div class="drow">
+            <div class="dcell">
+              <div class="label" id="r-lbl-time">সময়</div>
+              <div class="value" id="r-time">08:17pm 05/08/26</div>
+            </div>
+            <div class="dcell">
+              <div class="label" id="r-lbl-trx">ট্রানজেকশন আইডি</div>
+              <div class="value">
+                <span id="r-trx">DH565SDTQK</span>
+                <button class="inline-ico copy" type="button" onclick="copyTrx()" aria-label="কপি">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="13" height="13" x="9" y="9" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="drow amount">
+            <div class="dcell">
+              <div class="label" id="r-lbl-total">সর্বমোট</div>
+              <div class="value"><span class="taka" id="r-amount">৳10.00</span></div>
+              <div class="charge" id="r-charge">+ চার্জ প্রযোজ্য নয়</div>
+            </div>
+            <div class="dcell">
+              <div class="label" id="r-lbl-bal">নতুন ব্যালেন্স</div>
+              <div class="value">
+                <span class="taka" id="r-balance">৳5.01</span>
+                <button class="inline-ico eye" type="button" onclick="toggleBalance(this)" aria-label="ব্যালেন্স দেখুন">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/>
+                    <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/>
+                    <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.443-5.137"/>
+                    <line x1="2" x2="22" y1="2" y2="22"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="drow ref-row">
+            <div class="dcell">
+              <div class="label" id="r-lbl-ref">রেফারেন্স</div>
+              <div class="value" id="r-ref" style="min-height:24px;"></div>
+            </div>
+            <div class="dcell">&nbsp;</div>
+          </div>
+        </section>
+
+        <section class="actions">
+          <button class="action-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+              <path d="M8 16H3v5"/>
+            </svg>
+            <span id="r-autopay">অটো পে চালু করুন</span>
+          </button>
+
+          <button class="action-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m22 2-7 20-4-9-9-4Z"/>
+              <path d="M22 2 11 13"/>
+            </svg>
+            <span id="r-share">শেয়ার</span>
+          </button>
+        </section>
+
+        <section class="rewards">
+          <div class="reward-star">
+            <svg viewBox="0 0 24 24" fill="#ffffff" stroke="#ffffff" stroke-width="0.8" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </div>
+          <div class="reward-rule"></div>
+          <p class="reward-eyebrow" id="r-rew1">আপনি অর্জন করেছেন</p>
+          <h2 class="reward-title" id="r-rew2">বিকাশ রিওয়ার্ড পয়েন্ট</h2>
+          <p class="reward-sub" id="r-rew3">পয়েন্ট ব্যবহার করতে <a href="#">বিকাশ রিওয়ার্ডস</a> চেক করুন!</p>
+        </section>
+
+        <div class="spacer"></div>
+
+        <button class="r-footer" type="button">
+          <span id="r-home">হোম-এ ফিরে যাই</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14"/>
+            <path d="m12 5 7 7-7 7"/>
+          </svg>
+        </button>
+
+      </main>
+      <!-- ====== END RECEIPT ====== -->
+
+    </div>
+  </div>
+</div><!-- /preview-view -->
+
+
+<div class="toast" id="toast">কপি হয়েছে</div>
+
+
+<script>
+/* =============================================================
+   IX Receipt Forge — Logic
+   ============================================================= */
+
+// ───── Language ─────
+let lang = 'bn';
+const T = {
+  en:{
+    sub:'Craft pixel-perfect bKash receipts',
+    lang:'Language',
+    secRecip:'Recipient Details',secTxn:'Transaction Details',
+    name:'Name',phone:'Phone Number',amount:'Amount',balance:'New Balance',
+    charge:'Charge Text',trxid:'Transaction ID',ref:'Reference',date:'Date',time:'Time',
+    gen:'Generate Receipt',back:'Back',dl:'Download',
+    // receipt
+    rH1:'Your',rH2:' Send Money',rH3:' Successful',
+    rCall:'Call',rTime:'Time',rTrx:'Transaction ID',rTotal:'Total',
+    rBal:'New Balance',rRef:'Reference',rAuto:'Enable Auto Pay',rShare:'Share',
+    rR1:'You have earned',rR2:'bKash Reward Points',
+    rR3p:'To use points check ',rR3l:'bKash Rewards',rR3s:'!',
+    rHome:'Go to Home',
+  },
+  bn:{
+    sub:'পিক্সেল-পারফেক্ট বিকাশ রিসিট তৈরি করুন',
+    lang:'ভাষা',
+    secRecip:'প্রাপকের তথ্য',secTxn:'লেনদেনের তথ্য',
+    name:'নাম',phone:'ফোন নম্বর',amount:'পরিমাণ',balance:'নতুন ব্যালেন্স',
+    charge:'চার্জ টেক্সট',trxid:'ট্রানজেকশন আইডি',ref:'রেফারেন্স',date:'তারিখ',time:'সময়',
+    gen:'রিসিট তৈরি করুন',back:'ফিরে যান',dl:'ডাউনলোড',
+    // receipt
+    rH1:'আপনার',rH2:' সেন্ড মানি',rH3:' সফল হয়েছে',
+    rCall:'কল',rTime:'সময়',rTrx:'ট্রানজেকশন আইডি',rTotal:'সর্বমোট',
+    rBal:'নতুন ব্যালেন্স',rRef:'রেফারেন্স',rAuto:'অটো পে চালু করুন',rShare:'শেয়ার',
+    rR1:'আপনি অর্জন করেছেন',rR2:'বিকাশ রিওয়ার্ড পয়েন্ট',
+    rR3p:'পয়েন্ট ব্যবহার করতে ',rR3l:'বিকাশ রিওয়ার্ডস',rR3s:' চেক করুন!',
+    rHome:'হোম-এ ফিরে যাই',
+  }
+};
+
+function toggleLang(){
+  const el=document.getElementById('langToggle');
+  lang = lang==='bn'?'en':'bn';
+  el.classList.toggle('on',lang==='bn');
+  applyLang();
+}
+
+function setLabel(id,txt){
+  const el=document.getElementById(id);
+  const svg=el.querySelector('svg');
+  if(svg){el.innerHTML='';el.appendChild(svg);el.append(' '+txt);}
+  else el.textContent=txt;
+}
+
+function applyLang(){
+  const t=T[lang];
+  document.getElementById('editor-sub').textContent=t.sub;
+  document.getElementById('lbl-lang').textContent=t.lang;
+  document.getElementById('sec-recip').textContent=t.secRecip;
+  document.getElementById('sec-txn').textContent=t.secTxn;
+  setLabel('lbl-name',t.name);setLabel('lbl-phone',t.phone);
+  setLabel('lbl-amount',t.amount);setLabel('lbl-balance',t.balance);
+  setLabel('lbl-charge',t.charge);setLabel('lbl-trxid',t.trxid);
+  setLabel('lbl-ref',t.ref);setLabel('lbl-date',t.date);setLabel('lbl-time',t.time);
+  document.getElementById('btn-gen-text').textContent=t.gen;
+  document.getElementById('btn-back-txt').textContent=t.back;
+  document.getElementById('btn-dl-txt').textContent=t.dl;
+  // receipt dynamic labels
+  document.getElementById('r-call').textContent=t.rCall;
+  document.getElementById('r-lbl-time').textContent=t.rTime;
+  document.getElementById('r-lbl-trx').textContent=t.rTrx;
+  document.getElementById('r-lbl-total').textContent=t.rTotal;
+  document.getElementById('r-lbl-bal').textContent=t.rBal;
+  document.getElementById('r-lbl-ref').textContent=t.rRef;
+  document.getElementById('r-autopay').textContent=t.rAuto;
+  document.getElementById('r-share').textContent=t.rShare;
+  document.getElementById('r-rew1').textContent=t.rR1;
+  document.getElementById('r-rew2').textContent=t.rR2;
+  document.getElementById('r-rew3').innerHTML=t.rR3p+'<a href="#">'+t.rR3l+'</a>'+t.rR3s;
+  document.getElementById('r-home').textContent=t.rHome;
+
+  // header
+  const h1=document.querySelector('.hdr-title');
+  h1.innerHTML=t.rH1+' <span style="font-weight:800">'+t.rH2+'</span>&nbsp;<span class="ok">'+t.rH3+'</span>';
+}
+
+
+// ───── Generate ─────
+function genTrxID(){
+  const c='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let s='';for(let i=0;i<10;i++) s+=c[Math.floor(Math.random()*c.length)];
+  return s;
+}
+function nowDT(){
+  const d=new Date();
+  let h=d.getHours();const m=String(d.getMinutes()).padStart(2,'0');
+  const ap=h>=12?'pm':'am';h=h%12||12;
+  return{
+    time:String(h).padStart(2,'0')+':'+m+ap,
+    date:String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()).slice(-2)
+  };
+}
+
+function processReceipt(){
+  const name  = document.getElementById('in-name').value.trim()||'R7AD Bhai FF';
+  const phone = document.getElementById('in-phone').value.trim()||'01965064865';
+  const amt   = document.getElementById('in-amount').value.trim()||'10.00';
+  const bal   = document.getElementById('in-balance').value.trim()||'5.01';
+  const chg   = document.getElementById('in-charge').value.trim()||'+ চার্জ প্রযোজ্য নয়';
+  const trx   = document.getElementById('in-trxid').value.trim()||genTrxID();
+  const ref   = document.getElementById('in-ref').value.trim();
+  const {time,date}=nowDT();
+  const t = document.getElementById('in-time').value.trim()||time;
+  const d = document.getElementById('in-date').value.trim()||date;
+
+  document.getElementById('r-avatar').textContent=name.charAt(0).toUpperCase();
+  document.getElementById('r-name').textContent=name;
+  document.getElementById('r-phone').textContent=phone;
+  document.getElementById('r-time').textContent=t+' '+d;
+  document.getElementById('r-trx').textContent=trx;
+  document.getElementById('r-amount').textContent='৳'+amt;
+  document.getElementById('r-balance').textContent='৳'+bal;
+  BALANCE_VAL='৳'+bal;
+  document.getElementById('r-charge').textContent=chg;
+  document.getElementById('r-ref').textContent=ref||'';
+
+  document.getElementById('editor-view').style.display='none';
+  document.getElementById('preview-view').style.display='block';
+  window.scrollTo(0,0);
+}
+
+
+// ───── Back ─────
+function goBack(){
+  document.getElementById('preview-view').style.display='none';
+  document.getElementById('editor-view').style.display='block';
+  window.scrollTo(0,0);
+}
+
+
+// ───── Download ─────
+function downloadReceipt(){
+  const area=document.getElementById('capture-area');
+  const btn=document.getElementById('btn-dl');
+  const orig=btn.innerHTML;
+  btn.innerHTML='<svg style="width:17px;height:17px;animation:spin .7s linear infinite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> <span>Processing…</span>';
+  btn.disabled=true;
+
+  html2canvas(area,{
+    scale:3,
+    useCORS:true,
+    backgroundColor:'#ffffff',
+    width:400,
+    height:area.scrollHeight,
+    windowWidth:400,
+    windowHeight:area.scrollHeight,
+    scrollX:0,
+    scrollY:0,
+    x:0,
+    y:0,
+    logging:false,
+    onclone:function(clonedDoc){
+      const ca=clonedDoc.getElementById('capture-area');
+      if(ca){
+        ca.style.width='400px';
+        ca.style.minWidth='400px';
+        ca.style.maxWidth='400px';
+        ca.style.overflow='hidden';
+        ca.style.position='relative';
+        ca.style.left='0';
+        ca.style.top='0';
+      }
+      const pg=clonedDoc.getElementById('receipt-page');
+      if(pg){
+        pg.style.width='400px';
+        pg.style.maxWidth='400px';
+        pg.style.minHeight='auto';
+        pg.style.display='flex';
+        pg.style.flexDirection='column';
+      }
+      // Force all table cells to stay at 50%
+      const cells=clonedDoc.querySelectorAll('.dcell');
+      cells.forEach(c=>{c.style.width='200px';c.style.maxWidth='200px';});
+      // Force action buttons
+      const acts=clonedDoc.querySelectorAll('.action-btn');
+      acts.forEach(a=>{a.style.flex='1 1 0';a.style.maxWidth='50%';});
+    }
+  }).then(canvas=>{
+    canvas.toBlob(blob=>{
+      const u=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=u;a.download='bkash-receipt-'+Date.now()+'.png';
+      document.body.appendChild(a);a.click();
+      document.body.removeChild(a);URL.revokeObjectURL(u);
+      btn.innerHTML=orig;btn.disabled=false;
+    },'image/png');
+  }).catch(()=>{
+    btn.innerHTML=orig;btn.disabled=false;
+    alert('Download failed. Please try again.');
+  });
+}
+
+
+// ───── Balance toggle ─────
+let balanceVisible=true;
+let BALANCE_VAL='৳5.01';
+const MASKED='৳••••';
+
+function toggleBalance(btn){
+  balanceVisible=!balanceVisible;
+  document.getElementById('r-balance').textContent=balanceVisible?BALANCE_VAL:MASKED;
+  const eyeOff=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.443-5.137"/><line x1="2" x2="22" y1="2" y2="22"/></svg>`;
+  const eyeOn=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>`;
+  btn.innerHTML=balanceVisible?eyeOff:eyeOn;
+}
+
+
+// ───── Copy TrxID ─────
+function copyTrx(){
+  const txt=document.getElementById('r-trx').textContent.trim();
+  const ok=()=>showToast('ট্রানজেকশন আইডি কপি হয়েছে');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(ok).catch(ok);
+  }else{
+    const ta=document.createElement('textarea');
+    ta.value=txt;ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');}catch(e){}
+    document.body.removeChild(ta);ok();
+  }
+}
+
+let toastT;
+function showToast(m){
+  const t=document.getElementById('toast');
+  t.textContent=m;t.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+
+// ───── All browser interactions UNLOCKED ─────
+// Right-click, long-press, copy, save — all allowed
+
+// ───── Spin keyframe for download button ─────
+const st=document.createElement('style');
+st.textContent='@keyframes spin{to{transform:rotate(360deg)}}';
+document.head.appendChild(st);
+</script>
+
+</body>
+</html>
